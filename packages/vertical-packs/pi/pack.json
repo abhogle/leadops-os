@@ -1,0 +1,10 @@
+{
+  "industry": "pi",
+  "defaultLeadFields": [
+    { "key": "firstName", "label": "First Name", "type": "string", "required": true },
+    { "key": "lastName", "label": "Last Name", "type": "string", "required": true },
+    { "key": "caseType", "label": "Case Type", "type": "string", "required": false }
+  ],
+  "defaultWorkflows": [],
+  "defaultSettings": {}
+}

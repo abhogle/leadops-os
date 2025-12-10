@@ -1,0 +1,10 @@
+{
+  "industry": "medspa",
+  "defaultLeadFields": [
+    { "key": "firstName", "label": "First Name", "type": "string", "required": true },
+    { "key": "lastName", "label": "Last Name", "type": "string", "required": true },
+    { "key": "treatmentInterest", "label": "Treatment Interest", "type": "string", "required": false }
+  ],
+  "defaultWorkflows": [],
+  "defaultSettings": {}
+}

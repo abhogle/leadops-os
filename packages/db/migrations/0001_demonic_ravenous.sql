@@ -1,0 +1,1 @@
+ALTER TABLE "org_config" ADD COLUMN "onboarding_state" text DEFAULT 'org_created' NOT NULL;

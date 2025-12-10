@@ -1,0 +1,21 @@
+{
+  "name": "@leadops/api",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node ./dist/index.js"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.1.0",
+    "@leadops/auth": "workspace:*",
+    "@leadops/common": "workspace:*",
+    "@leadops/db": "workspace:*",
+    "@leadops/types": "workspace:*",
+    "@leadops/vertical-packs": "workspace:*",
+    "fastify": "^5.6.2"
+  }
+}

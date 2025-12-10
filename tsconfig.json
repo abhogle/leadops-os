@@ -1,0 +1,34 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/common" },
+    { "path": "./packages/types" },
+    { "path": "./packages/config" },
+    { "path": "./packages/schemas" },
+    { "path": "./packages/db" },
+    { "path": "./packages/auth" },
+    { "path": "./packages/vertical-packs" }
+  ],
+  "compilerOptions": {
+    "composite": true,
+    "module": "NodeNext",
+    "target": "ES2022",
+    "moduleResolution": "NodeNext",
+    "resolveJsonModule": true,
+    "strict": true,
+    "isolatedModules": true,
+    "forceConsistentCasingInFileNames": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@leadops/common": ["packages/common/index.ts"],
+      "@leadops/types": ["packages/types/index.ts"],
+      "@leadops/config": ["packages/config/index.ts"],
+      "@leadops/schemas": ["packages/schemas/index.ts"],
+      "@leadops/db": ["packages/db/index.ts"],
+      "@leadops/auth": ["packages/auth/index.ts"],
+      "@leadops/vertical-packs": ["packages/vertical-packs/index.ts"]
+    }
+  }
+}

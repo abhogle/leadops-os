@@ -1,0 +1,10 @@
+{
+  "industry": "home-services",
+  "defaultLeadFields": [
+    { "key": "firstName", "label": "First Name", "type": "string", "required": true },
+    { "key": "lastName", "label": "Last Name", "type": "string", "required": true },
+    { "key": "serviceType", "label": "Service Type", "type": "string", "required": false }
+  ],
+  "defaultWorkflows": [],
+  "defaultSettings": {}
+}
