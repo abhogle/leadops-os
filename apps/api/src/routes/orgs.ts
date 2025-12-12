@@ -3,8 +3,7 @@ import { orgs } from "@leadops/db";
 
 export async function registerOrgRoutes(app: FastifyInstance) {
   app.get("/orgs", async (req) => {
-    // @ts-expect-error db added by Fastify decorator
-    const db = req.server.db;
+    const db = app.db;
 
     if (!process.env.DATABASE_URL) {
       return { error: "Database not configured. Set DATABASE_URL." };

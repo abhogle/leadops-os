@@ -30,3 +30,22 @@ export interface OrgConfig {
   leadFields: LeadFieldConfig[];
   workflows: WorkflowConfig[];
 }
+
+/**
+ * AI Model Configuration
+ * Per Doc #25 (LLM Strategy & Model Architecture)
+ * Milestone 17: AI SMS Engine v1
+ */
+export const AI_MODELS = {
+  conversation: {
+    model: "claude-sonnet-4",
+    provider: "anthropic",
+    timeout: 5000, // 5 seconds
+    maxTokens: 1024,
+  },
+  // Future: Add other model types
+  // classification: { ... },
+  // summarization: { ... },
+} as const;
+
+export type AIModelConfig = typeof AI_MODELS;

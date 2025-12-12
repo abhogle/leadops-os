@@ -1,152 +1,151 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { apiGet, apiPost } from "../lib/api";
-
-type OnboardingState =
-  | "org_created"
-  | "industry_selected"
-  | "config_confirmed"
-  | "completed";
-
-interface MeResponse {
-  user: any;
-  org: any;
-  tokenClaims: any;
-  onboardingState: OnboardingState;
-}
-
-interface ConfigResponse {
-  org: any;
-  onboardingState: OnboardingState;
-  config: {
-    leadFields: any[];
-    workflows: any[];
-    settings: Record<string, any>;
-    vertical: any;
-  };
-}
-
-const TOKEN_KEY = "leadops_auth_token";
+import {
+  AvailableIndustriesResponseSchema,
+  OnboardingStateResponseSchema,
+  type AvailableIndustriesResponse,
+  type OnboardingStateResponse,
+  type SetIndustryRequest,
+  type ConfirmConfigRequest,
+} from "@leadops/schemas";
+import { useSessionStore } from "../src/state/sessionStore";
+import { TOKEN_KEY } from "../src/config";
 
 export function OnboardingFlow() {
+  const router = useRouter();
+  const { session, isLoading, error, refresh } = useSessionStore();
   const [token, setToken] = useState<string | null>(null);
-  const [me, setMe] = useState<MeResponse | null>(null);
-  const [config, setConfig] = useState<ConfigResponse | null>(null);
   const [industries, setIndustries] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [initLoading, setInitLoading] = useState(true);
 
   useEffect(() => {
-    const search = window.location.search;
-    const params = new URLSearchParams(search);
-    const urlToken = params.get("token");
+    // TODO: Implement proper auth - token should come from HttpOnly cookie or Authorization header
+    // For now, reading from localStorage (should be set by login flow)
     const saved = window.localStorage.getItem(TOKEN_KEY);
 
-    if (urlToken) {
-      window.localStorage.setItem(TOKEN_KEY, urlToken);
-      setToken(urlToken);
-      // Clean URL so token is not left hanging around in query string
-      window.history.replaceState({}, "", window.location.pathname);
-    } else if (saved) {
+    if (saved) {
       setToken(saved);
     }
 
-    setLoading(false);
+    setInitLoading(false);
   }, []);
 
   useEffect(() => {
-    if (!token || loading) return;
+    if (!token || initLoading) return;
     (async () => {
       try {
-        const [meRes, cfgRes, avail] = await Promise.all([
-          apiGet("/me", token),
-          apiGet("/onboarding/state", token),
-          apiGet("/onboarding/available-industries"),
-        ]);
-        setMe(meRes as MeResponse);
-        setConfig(cfgRes as ConfigResponse);
-        setIndustries((avail as any).industries || []);
+        const avail = await apiGet<AvailableIndustriesResponse>(
+          "/onboarding/available-industries",
+          AvailableIndustriesResponseSchema
+        );
+        setIndustries(avail.industries || []);
+        // Trigger session load if not already loaded
+        await refresh();
       } catch (e: any) {
-        setError(e.message ?? "Failed to load onboarding data");
+        console.error("Failed to load onboarding data:", e);
       }
     })();
-  }, [token, loading]);
+  }, [token, initLoading, refresh]);
+
+  // Redirect to app when onboarding is completed
+  useEffect(() => {
+    if (session?.onboardingStatus === "completed") {
+      router.replace("/app");
+    }
+  }, [session?.onboardingStatus, router]);
 
   async function handleSetIndustry(industry: string) {
     if (!token) return;
-    await apiPost("/onboarding/set-industry", { industry }, token);
-    const cfgRes = await apiGet("/onboarding/state", token);
-    setConfig(cfgRes as ConfigResponse);
+    const requestData: SetIndustryRequest = { industry };
+    await apiPost<OnboardingStateResponse>(
+      "/onboarding/set-industry",
+      requestData,
+      OnboardingStateResponseSchema,
+      token
+    );
+    // Refresh session to get updated state
+    await refresh();
   }
 
   async function handleConfirmConfig() {
-    if (!token || !config) return;
-    await apiPost(
+    if (!token || !session?.config) return;
+    const requestData: ConfirmConfigRequest = {
+      leadFields: session.config.leadFields,
+      workflows: session.config.workflows,
+      settings: session.config.settings,
+    };
+    await apiPost<OnboardingStateResponse>(
       "/onboarding/confirm-config",
-      {
-        leadFields: config.config.leadFields,
-        workflows: config.config.workflows,
-        settings: config.config.settings,
-      },
+      requestData,
+      OnboardingStateResponseSchema,
       token
     );
-    const cfgRes = await apiGet("/onboarding/state", token);
-    setConfig(cfgRes as ConfigResponse);
+    // Refresh session to get updated state
+    await refresh();
   }
 
   async function handleFinish() {
     if (!token) return;
-    await apiPost("/onboarding/finish", {}, token);
-    const meRes = await apiGet("/me", token);
-    setMe(meRes as MeResponse);
+    await apiPost<OnboardingStateResponse>(
+      "/onboarding/finish",
+      {},
+      OnboardingStateResponseSchema,
+      token
+    );
+    // Refresh session to get updated state
+    await refresh();
   }
 
-  if (loading) return <div style={{ padding: 24 }}>Loading…</div>;
-  if (error) return <div style={{ padding: 24, color: "red" }}>{error}</div>;
+  if (initLoading || isLoading) {
+    return <div style={{ padding: 24 }}>Loading…</div>;
+  }
+
+  if (error) {
+    return <div style={{ padding: 24, color: "red" }}>{error}</div>;
+  }
+
   if (!token) {
     return (
       <div style={{ padding: 24 }}>
         <h1>LeadOps OS Onboarding</h1>
-        <p>No active session found. To begin onboarding, open this app with a valid token in the URL query string.</p>
+        <p>No active session found. Please log in to continue.</p>
       </div>
     );
   }
 
-  if (!me || !config) {
+  if (!session) {
     return <div style={{ padding: 24 }}>Loading session…</div>;
   }
 
-  if (me.onboardingState === "completed") {
-    return (
-      <div style={{ padding: 24 }}>
-        <h1>Welcome to LeadOps OS</h1>
-        <p>Onboarding is complete. Main app dashboard will go here.</p>
-      </div>
-    );
+  if (session.onboardingStatus === "completed") {
+    // Show nothing while redirecting (useEffect above handles the redirect)
+    return null;
   }
 
   return (
     <div style={{ padding: 24, maxWidth: 800 }}>
       <h1>LeadOps OS Onboarding</h1>
-      <p>Org: {me.org?.name}</p>
-      <p>Current step: {me.onboardingState}</p>
+      <p>Org: {session.org?.name}</p>
+      <p>Current step: {session.onboardingStatus}</p>
 
-      {me.onboardingState === "org_created" && (
+      {session.onboardingStatus === "org_created" && (
         <IndustryStep
           industries={industries}
           onSelect={handleSetIndustry}
         />
       )}
 
-      {me.onboardingState === "industry_selected" && config && (
+      {session.onboardingStatus === "industry_selected" && session.config && (
         <ConfigReviewStep
-          config={config}
+          config={session.config}
           onConfirm={handleConfirmConfig}
         />
       )}
 
-      {me.onboardingState === "config_confirmed" && (
+      {session.onboardingStatus === "config_confirmed" && (
         <FinishStep onFinish={handleFinish} />
       )}
     </div>
@@ -184,18 +183,18 @@ function ConfigReviewStep({
   config,
   onConfirm,
 }: {
-  config: ConfigResponse;
+  config: import("@leadops/schemas").OrgConfig;
   onConfirm: () => void;
 }) {
   return (
     <div style={{ marginTop: 24 }}>
       <h2>Review your configuration</h2>
       <h3>Lead Fields</h3>
-      <pre>{JSON.stringify(config.config.leadFields, null, 2)}</pre>
+      <pre>{JSON.stringify(config.leadFields, null, 2)}</pre>
       <h3>Workflows</h3>
-      <pre>{JSON.stringify(config.config.workflows, null, 2)}</pre>
+      <pre>{JSON.stringify(config.workflows, null, 2)}</pre>
       <h3>Settings</h3>
-      <pre>{JSON.stringify(config.config.settings, null, 2)}</pre>
+      <pre>{JSON.stringify(config.settings, null, 2)}</pre>
       <button type="button" onClick={onConfirm} style={{ marginTop: 8 }}>
         Confirm configuration
       </button>

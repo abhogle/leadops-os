@@ -1,5 +1,14 @@
-import { OnboardingFlow } from "../components/OnboardingFlow";
+"use client";
 
-export default function Page() {
-  return <OnboardingFlow />;
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
+export default function HomePage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace("/app");
+  }, [router]);
+
+  return null;
 }

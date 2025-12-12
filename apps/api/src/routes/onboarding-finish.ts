@@ -1,20 +1,31 @@
-import type { FastifyInstance, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { enforceTenancy } from "../tenancy/enforce-tenancy.js";
-import { transitionOnboardingState } from "../services/onboarding-service.js";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-import type { Org } from "@leadops/types";
-
-interface TenantContext {
-  org: Org;
-}
+import { requireRole } from "../middleware/require-role.js";
+import { transitionOnboardingState, OnboardingInvalidTransitionError } from "../services/onboarding-service.js";
+import { ValidationError, InternalError } from "../errors/index.js";
 
 export async function registerOnboardingFinishRoute(app: FastifyInstance) {
-  app.post("/onboarding/finish", { preHandler: [enforceTenancy] }, async (req: FastifyRequest) => {
-    const { org } = (req as unknown as { tenantContext: TenantContext }).tenantContext;
-    const db = (app as unknown as { db: NodePgDatabase }).db;
+  app.post("/onboarding/finish", {
+    preHandler: [enforceTenancy, requireRole("owner")]
+  }, async (req: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const context = req.tenantContext;
+      if (!context || !context.org) {
+        throw new InternalError("Organization context missing");
+      }
 
-    const finalState = await transitionOnboardingState(db, org.id, "completed");
+      const { org } = context;
+      const db = app.db;
 
-    return { onboardingState: finalState };
+      const finalState = await transitionOnboardingState(db, org.id, "completed");
+
+      // Map internal onboardingState to API contract onboardingStatus
+      return { onboardingStatus: finalState };
+    } catch (err) {
+      if (err instanceof OnboardingInvalidTransitionError) {
+        throw new ValidationError(err.message);
+      }
+      throw err;
+    }
   });
 }

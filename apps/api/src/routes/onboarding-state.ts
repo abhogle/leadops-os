@@ -1,25 +1,25 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { enforceTenancy } from "../tenancy/enforce-tenancy.js";
 import { loadOrgConfig } from "../services/config-service.js";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-import type { Org, User } from "@leadops/types";
-
-interface TenantContext {
-  org: Org;
-  user: User;
-}
+import { InternalError } from "../errors/index.js";
 
 export async function registerOnboardingStateRoute(app: FastifyInstance) {
-  app.get("/onboarding/state", { preHandler: [enforceTenancy] }, async (req: FastifyRequest) => {
-    const { org, user } = (req as unknown as { tenantContext: TenantContext }).tenantContext;
-    const db = (app as unknown as { db: NodePgDatabase }).db;
+  app.get("/onboarding/state", { preHandler: [enforceTenancy] }, async (req: FastifyRequest, reply) => {
+    const context = req.tenantContext;
+    if (!context || !context.org || !context.user) {
+      throw new InternalError("Tenant context missing");
+    }
+
+    const { org, user } = context;
+    const db = app.db;
 
     const cfg = await loadOrgConfig(db, org.id);
 
+    // Map internal onboardingState to API contract onboardingStatus
     return {
       user,
       org,
-      onboardingState: cfg.onboardingState,
+      onboardingStatus: cfg.onboardingState,
       config: cfg
     };
   });

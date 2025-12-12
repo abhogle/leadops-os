@@ -8,7 +8,6 @@ export async function resolveTenancy(
   app: FastifyInstance,
   claims: LeadOpsAuthToken
 ): Promise<{ org: Org | null; user: User | null }> {
-  // @ts-expect-error db decorator
   const db = app.db;
 
   // fetch user
@@ -29,16 +28,16 @@ export async function resolveTenancy(
     orgId: userRow.orgId,
     email: userRow.email,
     role: userRow.role as User["role"],
-    createdAt: userRow.createdAt.toISOString(),
-    updatedAt: userRow.updatedAt.toISOString(),
+    createdAt: userRow.createdAt instanceof Date ? userRow.createdAt.toISOString() : userRow.createdAt,
+    updatedAt: userRow.updatedAt instanceof Date ? userRow.updatedAt.toISOString() : userRow.updatedAt,
   };
 
   const org: Org = {
     id: orgRow.id,
     name: orgRow.name,
     industry: orgRow.industry || undefined,
-    createdAt: orgRow.createdAt.toISOString(),
-    updatedAt: orgRow.updatedAt.toISOString(),
+    createdAt: orgRow.createdAt instanceof Date ? orgRow.createdAt.toISOString() : orgRow.createdAt,
+    updatedAt: orgRow.updatedAt instanceof Date ? orgRow.updatedAt.toISOString() : orgRow.updatedAt,
   };
 
   return { org, user };

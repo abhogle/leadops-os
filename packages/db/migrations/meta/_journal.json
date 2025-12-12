@@ -15,6 +15,13 @@
       "when": 1765265701129,
       "tag": "0001_demonic_ravenous",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1765437523653,
+      "tag": "0002_heavy_night_thrasher",
+      "breakpoints": true
     }
   ]
 }

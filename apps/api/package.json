@@ -7,15 +7,29 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "start": "node ./dist/index.js"
+    "dev": "tsx watch --env-file=../../.env src/index.ts",
+    "start": "node ./dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
+    "@fastify/cookie": "^11.0.2",
     "@fastify/cors": "^11.1.0",
+    "@fastify/csrf-protection": "^7.1.0",
+    "@fastify/rate-limit": "^10.3.0",
     "@leadops/auth": "workspace:*",
     "@leadops/common": "workspace:*",
     "@leadops/db": "workspace:*",
+    "@leadops/schemas": "workspace:*",
     "@leadops/types": "workspace:*",
     "@leadops/vertical-packs": "workspace:*",
+    "@leadops/workflow-engine": "workspace:*",
+    "bcrypt": "^6.0.0",
     "fastify": "^5.6.2"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/node": "^20.11.0",
+    "vitest": "^2.1.8"
   }
 }

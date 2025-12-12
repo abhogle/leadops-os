@@ -1,7 +1,16 @@
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
+import { API_BASE_URL } from "../src/config";
+import type { z } from "zod";
 
-export async function apiGet(path: string, token?: string) {
+const API_BASE = API_BASE_URL;
+
+/**
+ * Type-safe API GET request with Zod validation
+ */
+export async function apiGet<T>(
+  path: string,
+  schema: z.ZodType<T>,
+  token?: string
+): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: token
       ? {
@@ -10,13 +19,30 @@ export async function apiGet(path: string, token?: string) {
       : undefined,
     cache: "no-store",
   });
+
   if (!res.ok) {
     throw new Error(`GET ${path} failed with ${res.status}`);
   }
-  return res.json();
+
+  const data = await res.json();
+
+  try {
+    return schema.parse(data);
+  } catch (error) {
+    console.error(`API response validation failed for ${path}:`, error);
+    throw new Error(`Invalid API response format for ${path}`);
+  }
 }
 
-export async function apiPost(path: string, body: any, token?: string) {
+/**
+ * Type-safe API POST request with Zod validation
+ */
+export async function apiPost<TResponse>(
+  path: string,
+  body: unknown,
+  schema: z.ZodType<TResponse>,
+  token?: string
+): Promise<TResponse> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
     headers: {
@@ -25,8 +51,17 @@ export async function apiPost(path: string, body: any, token?: string) {
     },
     body: JSON.stringify(body),
   });
+
   if (!res.ok) {
     throw new Error(`POST ${path} failed with ${res.status}`);
   }
-  return res.json();
+
+  const data = await res.json();
+
+  try {
+    return schema.parse(data);
+  } catch (error) {
+    console.error(`API response validation failed for ${path}:`, error);
+    throw new Error(`Invalid API response format for ${path}`);
+  }
 }

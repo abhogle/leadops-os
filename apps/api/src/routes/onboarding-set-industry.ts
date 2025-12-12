@@ -1,53 +1,69 @@
 import type { FastifyInstance } from "fastify";
 import { enforceTenancy } from "../tenancy/enforce-tenancy.js";
+import { requireRole } from "../middleware/require-role.js";
 import { orgConfig } from "@leadops/db";
 import { loadVerticalPack } from "@leadops/vertical-packs";
 import { eq } from "drizzle-orm";
-import { transitionOnboardingState } from "../services/onboarding-service.js";
+import { transitionOnboardingState, OnboardingInvalidTransitionError } from "../services/onboarding-service.js";
+import { SetIndustryRequestSchema } from "@leadops/schemas";
+import { ValidationError, InternalError } from "../errors/index.js";
 
 export async function registerOnboardingSetIndustryRoute(app: FastifyInstance) {
-  app.post("/onboarding/set-industry", { preHandler: [enforceTenancy] }, async (req, reply) => {
-    const body = req.body as { industry: string } | undefined;
+  app.post("/onboarding/set-industry", {
+    preHandler: [enforceTenancy, requireRole("owner")]
+  }, async (req, reply) => {
+    try {
+      const validation = SetIndustryRequestSchema.safeParse(req.body);
 
-    if (!body?.industry) {
-      return reply.status(400).send({
-        error: "Invalid request",
-        message: "Missing industry",
-      });
-    }
+      if (!validation.success) {
+        throw new ValidationError("Validation failed", validation.error.errors);
+      }
 
-    // @ts-expect-error tenant context
-    const { org } = req.tenantContext;
-    // @ts-expect-error db decorator
-    const db = req.server.db;
+      const body = validation.data;
 
-    const vertical = loadVerticalPack(body.industry);
+      const context = req.tenantContext;
+      if (!context || !context.org) {
+        throw new InternalError("Organization context missing");
+      }
 
-    const now = new Date().toISOString();
+      const { org } = context;
+      const db = req.server.db;
 
-    await db
-      .update(orgConfig)
-      .set({
+      const vertical = loadVerticalPack(body.industry);
+
+      const now = new Date();
+
+      await db
+        .update(orgConfig)
+        .set({
+          industry: body.industry,
+          verticalPack: body.industry,
+          leadFields: vertical.defaultLeadFields,
+          workflows: vertical.defaultWorkflows,
+          settings: vertical.defaultSettings,
+          updatedAt: now,
+        })
+        .where(eq(orgConfig.orgId, org.id));
+
+      // advance onboarding state org_created -> industry_selected (if valid)
+      const onboardingState = await transitionOnboardingState(
+        db,
+        org.id,
+        "industry_selected"
+      );
+
+      // Map internal onboardingState to API contract onboardingStatus
+      return {
+        success: true,
         industry: body.industry,
-        verticalPack: body.industry,
-        leadFields: vertical.defaultLeadFields,
-        workflows: vertical.defaultWorkflows,
-        settings: vertical.defaultSettings,
-        updatedAt: now,
-      })
-      .where(eq(orgConfig.orgId, org.id));
-
-    // advance onboarding state org_created -> industry_selected (if valid)
-    const onboardingState = await transitionOnboardingState(
-      db,
-      org.id,
-      "industry_selected" as any
-    );
-
-    return {
-      success: true,
-      industry: body.industry,
-      onboardingState,
-    };
+        onboardingStatus: onboardingState,
+      };
+    } catch (err) {
+      req.log.error(err, "Failed to set industry");
+      if (err instanceof OnboardingInvalidTransitionError) {
+        throw new ValidationError(err.message);
+      }
+      throw err;
+    }
   });
 }

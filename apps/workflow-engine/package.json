@@ -1,0 +1,29 @@
+{
+  "name": "@leadops/workflow-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@leadops/ai-engine": "workspace:*",
+    "@leadops/db": "workspace:*",
+    "@leadops/schemas": "workspace:*",
+    "@leadops/types": "workspace:*",
+    "bullmq": "^5.66.0",
+    "ioredis": "^5.8.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "tsx": "^4.9.3",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.9"
+  }
+}

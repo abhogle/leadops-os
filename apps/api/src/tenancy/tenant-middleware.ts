@@ -21,6 +21,5 @@ export async function tenantMiddleware(
   // Attach context to request
   // Future: req.tenantContext = actual resolved tenancy
   // Fastify allows symbol-based decoration
-  // @ts-expect-error: We'll formally extend Fastify types later
   req.tenantContext = context;
 }

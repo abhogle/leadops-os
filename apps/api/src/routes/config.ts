@@ -1,16 +1,16 @@
 import type { FastifyInstance } from "fastify";
 import { loadOrgConfig } from "../services/config-service.js";
+import { InternalError } from "../errors/index.js";
 
 export async function registerConfigRoute(app: FastifyInstance) {
-  app.get("/config", async (req) => {
-    // @ts-expect-error tenant context
-    const { org } = req.tenantContext;
+  app.get("/config", async (req, reply) => {
+    const context = req.tenantContext;
 
-    if (!org) {
-      return { error: "Org not found in tenant context" };
+    if (!context || !context.org) {
+      throw new InternalError("Organization context missing");
     }
 
-    // @ts-expect-error db
+    const { org } = context;
     const cfg = await loadOrgConfig(req.server.db, org.id);
 
     return {
